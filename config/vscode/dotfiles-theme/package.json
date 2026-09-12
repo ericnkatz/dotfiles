@@ -1,0 +1,22 @@
+{
+  "name": "dotfiles-theme",
+  "displayName": "Dotfiles Theme",
+  "description": "Generated from theme/palettes/tokyo-night.toml; regenerate via theme/generate-theme.py",
+  "version": "0.0.1",
+  "publisher": "dotfiles",
+  "engines": {
+    "vscode": "^1.50.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "Dotfiles",
+        "uiTheme": "vs-dark",
+        "path": "./themes/dotfiles.json"
+      }
+    ]
+  }
+}

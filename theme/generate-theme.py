@@ -12,6 +12,7 @@ Each generated file has a marked block:
   # END GENERATED THEME
 Only that block is replaced; everything else in the file is left alone.
 """
+import json
 import re
 import sys
 from pathlib import Path
@@ -150,6 +151,170 @@ def gen_ghostty(colors: dict) -> str:
     return "".join(lines)
 
 
+TOKEN_SCOPES = [
+    ("Comments", ["comment"], "dark_foreground"),
+    ("Strings", ["string"], "green"),
+    ("Numbers, booleans, constants", ["constant.numeric", "constant.language", "constant.character"], "orange"),
+    ("Keywords, storage, operators", ["keyword", "storage", "keyword.operator"], "magenta"),
+    ("Functions", ["entity.name.function", "support.function"], "blue"),
+    ("Types, classes", ["entity.name.type", "entity.name.class", "support.type", "support.class"], "yellow"),
+    ("Variables, parameters", ["variable", "variable.parameter"], "foreground"),
+    ("Tags (markup/html)", ["entity.name.tag"], "red"),
+    ("Attributes", ["entity.other.attribute-name"], "cyan"),
+]
+
+
+def gen_vscode_theme(colors: dict, theme_name: str) -> tuple[str, str]:
+    """Returns (package.json, themes/dotfiles.json) for an unpacked VS Code
+    theme extension. VS Code/Cursor themes are contributed by extensions, so
+    this writes a minimal one and install.sh symlinks it into each app's
+    extensions dir, rather than trying to override colors via settings.json.
+    """
+    background = pick(colors, "background")
+    foreground = pick(colors, "foreground")
+    bright_fg = pick(colors, "bright_foreground", "foreground")
+    dark_bg = pick(colors, "dark_background", default=background)
+    darker_bg = pick(colors, "darker_background", default=dark_bg)
+    lighter_bg = pick(colors, "lighter_background", default=background)
+    selection = pick(colors, "selection", "lighter_background", default=lighter_bg)
+    accent = pick(colors, "accent", "blue")
+    muted = pick(colors, "muted", "dark_foreground", default=foreground)
+    is_dark = colors.get("mode", "dark") != "light"
+
+    ansi = {
+        "red": pick(colors, "red"), "green": pick(colors, "green"),
+        "yellow": pick(colors, "yellow"), "blue": pick(colors, "blue"),
+        "magenta": pick(colors, "magenta"), "cyan": pick(colors, "cyan"),
+        "brightRed": pick(colors, "bright_red", "red"),
+        "brightGreen": pick(colors, "bright_green", "green"),
+        "brightYellow": pick(colors, "bright_yellow", "yellow"),
+        "brightBlue": pick(colors, "bright_blue", "blue"),
+        "brightMagenta": pick(colors, "bright_magenta", "magenta"),
+        "brightCyan": pick(colors, "bright_cyan", "cyan"),
+    }
+
+    theme_colors = {
+        "editor.background": background,
+        "editor.foreground": foreground,
+        "editorLineNumber.foreground": muted,
+        "editorLineNumber.activeForeground": bright_fg,
+        "editor.lineHighlightBackground": dark_bg,
+        "editor.selectionBackground": selection,
+        "editorCursor.foreground": bright_fg,
+        "editorWhitespace.foreground": muted,
+        "editorIndentGuide.background1": dark_bg,
+        "editorIndentGuide.activeBackground1": muted,
+        "sideBar.background": darker_bg,
+        "sideBar.foreground": foreground,
+        "sideBarTitle.foreground": foreground,
+        "activityBar.background": darker_bg,
+        "activityBar.foreground": foreground,
+        "activityBar.inactiveForeground": muted,
+        "statusBar.background": darker_bg,
+        "statusBar.foreground": foreground,
+        "titleBar.activeBackground": darker_bg,
+        "titleBar.activeForeground": foreground,
+        "titleBar.inactiveBackground": darker_bg,
+        "titleBar.inactiveForeground": muted,
+        "tab.activeBackground": background,
+        "tab.activeForeground": bright_fg,
+        "tab.inactiveBackground": darker_bg,
+        "tab.inactiveForeground": muted,
+        "tab.border": darker_bg,
+        "panel.background": darker_bg,
+        "panel.border": dark_bg,
+        "input.background": dark_bg,
+        "input.foreground": foreground,
+        "dropdown.background": dark_bg,
+        "focusBorder": accent,
+        "list.activeSelectionBackground": selection,
+        "list.hoverBackground": dark_bg,
+        "badge.background": accent,
+        "badge.foreground": background,
+        "button.background": accent,
+        "button.foreground": background,
+        "terminal.background": background,
+        "terminal.foreground": foreground,
+        "terminal.ansiRed": ansi["red"],
+        "terminal.ansiGreen": ansi["green"],
+        "terminal.ansiYellow": ansi["yellow"],
+        "terminal.ansiBlue": ansi["blue"],
+        "terminal.ansiMagenta": ansi["magenta"],
+        "terminal.ansiCyan": ansi["cyan"],
+        "terminal.ansiBrightRed": ansi["brightRed"],
+        "terminal.ansiBrightGreen": ansi["brightGreen"],
+        "terminal.ansiBrightYellow": ansi["brightYellow"],
+        "terminal.ansiBrightBlue": ansi["brightBlue"],
+        "terminal.ansiBrightMagenta": ansi["brightMagenta"],
+        "terminal.ansiBrightCyan": ansi["brightCyan"],
+    }
+
+    token_colors = [
+        {
+            "name": label,
+            "scope": scopes,
+            "settings": {"foreground": pick(colors, key, default=foreground)},
+        }
+        for label, scopes, key in TOKEN_SCOPES
+    ]
+
+    theme_json = {
+        "name": "Dotfiles",
+        "type": "dark" if is_dark else "light",
+        "colors": theme_colors,
+        "tokenColors": token_colors,
+    }
+
+    package_json = {
+        "name": "dotfiles-theme",
+        "displayName": "Dotfiles Theme",
+        "description": f"Generated from theme/palettes/{theme_name}.toml; regenerate via theme/generate-theme.py",
+        "version": "0.0.1",
+        "publisher": "dotfiles",
+        "engines": {"vscode": "^1.50.0"},
+        "categories": ["Themes"],
+        "contributes": {
+            "themes": [
+                {
+                    "label": "Dotfiles",
+                    "uiTheme": "vs-dark" if is_dark else "vs",
+                    "path": "./themes/dotfiles.json",
+                }
+            ]
+        },
+    }
+
+    return (
+        json.dumps(package_json, indent=2) + "\n",
+        json.dumps(theme_json, indent=2) + "\n",
+    )
+
+
+def editor_user_dir(app_name: str) -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / app_name / "User"
+    # Linux paths (VS Code: Code, Cursor: Cursor)
+    return Path.home() / ".config" / app_name / "User"
+
+
+def set_editor_theme(app_name: str) -> None:
+    user_dir = editor_user_dir(app_name)
+    if not user_dir.parent.exists():
+        return  # app not installed
+    settings_path = user_dir / "settings.json"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    settings = {}
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text())
+        except json.JSONDecodeError:
+            print(f"Skipping {settings_path}: not valid JSON", file=sys.stderr)
+            return
+    settings["workbench.colorTheme"] = "Dotfiles"
+    settings_path.write_text(json.dumps(settings, indent=2) + "\n")
+    print(f"Set workbench.colorTheme in {settings_path}")
+
+
 def apply(path: Path, comment_prefix: str, body: str) -> None:
     text = path.read_text() if path.exists() else ""
     new_text = replace_block(text, comment_prefix, body)
@@ -171,6 +336,17 @@ def main() -> None:
     apply(DOTFILES / "config" / "starship.toml", "#", gen_starship(colors, derived))
     apply(DOTFILES / "config" / "claude" / "statusline.sh", "#", gen_statusline(derived))
     apply(DOTFILES / "config" / "ghostty" / "config", "#", gen_ghostty(colors))
+
+    ext_dir = DOTFILES / "config" / "vscode" / "dotfiles-theme"
+    themes_dir = ext_dir / "themes"
+    themes_dir.mkdir(parents=True, exist_ok=True)
+    package_json, theme_json = gen_vscode_theme(colors, theme_name)
+    (ext_dir / "package.json").write_text(package_json)
+    (themes_dir / "dotfiles.json").write_text(theme_json)
+    print(f"Updated {ext_dir.relative_to(DOTFILES)}")
+
+    set_editor_theme("Code")
+    set_editor_theme("Cursor")
 
     (DOTFILES / "theme" / "current").write_text(theme_name + "\n")
     print(f"Theme set to: {theme_name}")

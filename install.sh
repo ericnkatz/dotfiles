@@ -33,6 +33,12 @@ if ! command -v brew &>/dev/null; then
   fi
 fi
 
+if ! command -v mise &>/dev/null; then
+  echo "Installing mise via mise.run (faster/smaller than the Homebrew formula)..."
+  curl -fsSL https://mise.run | sh
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+
 echo "Installing/checking Homebrew packages from Brewfile..."
 brew bundle install --file="$DOTFILES_DIR/Brewfile"
 
@@ -44,6 +50,23 @@ if [ "$(uname)" = "Linux" ]; then
     sudo pacman -S --needed --noconfirm ghostty
   else
     echo "Non-pacman Linux detected - install Ghostty yourself (see https://ghostty.org/docs/install/binary)."
+  fi
+
+  # VS Code and Cursor aren't in Arch's official repos, only the AUR. Use
+  # whichever AUR helper is present; otherwise print manual install links.
+  aur_helper=""
+  if command -v yay &>/dev/null; then
+    aur_helper="yay"
+  elif command -v paru &>/dev/null; then
+    aur_helper="paru"
+  fi
+  if [ -n "$aur_helper" ]; then
+    echo "Installing VS Code and Cursor via $aur_helper (AUR)..."
+    "$aur_helper" -S --needed --noconfirm visual-studio-code-bin cursor-bin
+  else
+    echo "No AUR helper (yay/paru) found - install VS Code and Cursor yourself:"
+    echo "  https://code.visualstudio.com/download"
+    echo "  https://cursor.com/download"
   fi
 
   if ! fc-list | grep -qi "0xProto Nerd Font"; then
@@ -69,6 +92,8 @@ if [ -n "$THEME" ]; then
   python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME"
 fi
 
+link "$DOTFILES_DIR/config/vscode/dotfiles-theme" "$HOME/.vscode/extensions/dotfiles-theme"
+link "$DOTFILES_DIR/config/vscode/dotfiles-theme" "$HOME/.cursor/extensions/dotfiles-theme"
 link "$DOTFILES_DIR/config/ghostty/config" "$HOME/.config/ghostty/config"
 link "$DOTFILES_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 link "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
