@@ -1,0 +1,19 @@
+{
+  "appearance": "dark",
+  "name": "Tokyo Night",
+  "version": "1",
+  "colors": {
+    "background": "#1a1b26",
+    "backgroundSecondary": "#0e0e14",
+    "text": "#a9b1d6",
+    "selection": "#292e42",
+    "loader": "#7aa2f7",
+    "red": "#f7768e",
+    "orange": "#eb927b",
+    "yellow": "#e0af68",
+    "green": "#9ece6a",
+    "blue": "#7aa2f7",
+    "purple": "#ad8ee6",
+    "magenta": "#ad8ee6"
+  }
+}

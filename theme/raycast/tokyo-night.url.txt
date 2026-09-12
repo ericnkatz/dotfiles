@@ -1,0 +1,1 @@
+raycast://theme?name=Tokyo%20Night&appearance=dark&version=1&colors=%231a1b26,%230e0e14,%23a9b1d6,%23292e42,%237aa2f7,%23f7768e,%23eb927b,%23e0af68,%239ece6a,%237aa2f7,%23ad8ee6,%23ad8ee6

@@ -14,8 +14,10 @@ Only that block is replaced; everything else in the file is left alone.
 """
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 DOTFILES = Path(__file__).resolve().parent.parent
 PALETTES_DIR = DOTFILES / "theme" / "palettes"
@@ -149,6 +151,59 @@ def gen_ghostty(colors: dict) -> str:
     for i in range(16):
         lines.append(f"palette = {i}={palette[i]}\n")
     return "".join(lines)
+
+
+def gen_raycast(colors: dict, theme_name: str) -> str:
+    """Raycast custom theme JSON (schema version "1", stable across Raycast
+    app releases including 2.3.1.0 - Raycast doesn't version this schema per
+    app release). Field order/shape verified against raycast/ray-so's own
+    bundled "Tokyo Night" theme by folke."""
+    background = pick(colors, "background")
+    background_secondary = pick(colors, "darker_background", "dark_background", default=background)
+    text = pick(colors, "foreground")
+    selection = pick(colors, "selection", "accent", default=text)
+    loader = pick(colors, "accent", "blue")
+    is_dark = colors.get("mode", "dark") != "light"
+
+    theme = {
+        "appearance": "dark" if is_dark else "light",
+        "name": theme_name.replace("-", " ").title(),
+        "version": "1",
+        "colors": {
+            "background": background,
+            "backgroundSecondary": background_secondary,
+            "text": text,
+            "selection": selection,
+            "loader": loader,
+            "red": pick(colors, "red"),
+            "orange": pick(colors, "orange", "yellow"),
+            "yellow": pick(colors, "yellow"),
+            "green": pick(colors, "green"),
+            "blue": pick(colors, "blue"),
+            "purple": pick(colors, "magenta", "blue"),
+            "magenta": pick(colors, "magenta", "red"),
+        },
+    }
+    return theme
+
+
+RAYCAST_COLOR_ORDER = [
+    "background", "backgroundSecondary", "text", "selection", "loader",
+    "red", "orange", "yellow", "green", "blue", "purple", "magenta",
+]
+
+
+def raycast_import_url(theme: dict) -> str:
+    """Raycast has no file-picker theme import - opening this deeplink shows
+    a live preview in the app with an "Add Theme" confirmation button."""
+    colors = ",".join(quote(theme["colors"][k]) for k in RAYCAST_COLOR_ORDER)
+    params = [
+        f"name={quote(theme['name'])}",
+        f"appearance={quote(theme['appearance'])}",
+        f"version={quote(theme['version'])}",
+        f"colors={colors}",
+    ]
+    return "raycast://theme?" + "&".join(params)
 
 
 TOKEN_SCOPES = [
@@ -297,10 +352,62 @@ def editor_user_dir(app_name: str) -> Path:
     return Path.home() / ".config" / app_name / "User"
 
 
-def set_editor_theme(app_name: str) -> None:
+def register_extension(app_name: str) -> None:
+    """A symlinked extension folder alone isn't enough: VS Code/Cursor keep
+    their own extensions.json registry and only rescan the extensions dir
+    on their own schedule/certain triggers, and extensions/.obsolete can mark
+    a past uninstall of this same extension id, which makes even a fresh
+    scan skip it. Since the CLI only accepts marketplace ids or .vsix files
+    (no plain-directory install), write the registry entry directly - Cursor
+    already carried a hand/self-registered entry in this exact minimal shape
+    for a local unpacked extension, used here as the reference shape."""
+    ext_dir = (Path.home() / ".vscode" / "extensions" if app_name == "Code"
+               else Path.home() / ".cursor" / "extensions")
+    ext_path = ext_dir / "dotfiles-theme"
+
+    obsolete_path = ext_dir / ".obsolete"
+    if obsolete_path.exists():
+        try:
+            obsolete = json.loads(obsolete_path.read_text())
+        except json.JSONDecodeError:
+            obsolete = {}
+        if any(k.startswith("dotfiles.dotfiles-theme") for k in obsolete):
+            obsolete = {k: v for k, v in obsolete.items() if not k.startswith("dotfiles.dotfiles-theme")}
+            obsolete_path.write_text(json.dumps(obsolete))
+
+    registry_path = ext_dir / "extensions.json"
+    entries = []
+    if registry_path.exists():
+        try:
+            entries = json.loads(registry_path.read_text())
+        except json.JSONDecodeError:
+            entries = []
+    entries = [e for e in entries if e.get("identifier", {}).get("id") != "dotfiles.dotfiles-theme"]
+    entries.append({
+        "identifier": {"id": "dotfiles.dotfiles-theme"},
+        "version": "0.0.1",
+        "location": {
+            "$mid": 1,
+            "fsPath": str(ext_path),
+            "external": f"file://{ext_path}",
+            "path": str(ext_path),
+            "scheme": "file",
+        },
+        "relativeLocation": "dotfiles-theme",
+    })
+    registry_path.write_text(json.dumps(entries))
+
+
+def set_editor_theme(app_name: str, cli_name: str) -> bool:
+    """Returns True if this editor's settings.json was updated."""
+    # Gate on the CLI shim (installed by Homebrew/the app itself), not on
+    # Application Support/<app> already existing - that folder is only
+    # created on the app's first launch, so gating on it means a fresh
+    # install (app never opened yet) silently skips setting the theme.
+    if not shutil.which(cli_name):
+        return False  # app not installed
+    register_extension(app_name)
     user_dir = editor_user_dir(app_name)
-    if not user_dir.parent.exists():
-        return  # app not installed
     settings_path = user_dir / "settings.json"
     user_dir.mkdir(parents=True, exist_ok=True)
     settings = {}
@@ -309,17 +416,21 @@ def set_editor_theme(app_name: str) -> None:
             settings = json.loads(settings_path.read_text())
         except json.JSONDecodeError:
             print(f"Skipping {settings_path}: not valid JSON", file=sys.stderr)
-            return
+            return False
     settings["workbench.colorTheme"] = "Dotfiles"
+    # window.autoDetectColorScheme (on by default in Cursor) overrides
+    # workbench.colorTheme with these two settings based on OS appearance -
+    # set both so Dotfiles wins regardless of that toggle.
+    settings["workbench.preferredDarkColorTheme"] = "Dotfiles"
+    settings["workbench.preferredLightColorTheme"] = "Dotfiles"
     settings_path.write_text(json.dumps(settings, indent=2) + "\n")
-    print(f"Set workbench.colorTheme in {settings_path}")
+    return True
 
 
 def apply(path: Path, comment_prefix: str, body: str) -> None:
     text = path.read_text() if path.exists() else ""
     new_text = replace_block(text, comment_prefix, body)
     path.write_text(new_text)
-    print(f"Updated {path.relative_to(DOTFILES)}")
 
 
 def main() -> None:
@@ -343,13 +454,26 @@ def main() -> None:
     package_json, theme_json = gen_vscode_theme(colors, theme_name)
     (ext_dir / "package.json").write_text(package_json)
     (themes_dir / "dotfiles.json").write_text(theme_json)
-    print(f"Updated {ext_dir.relative_to(DOTFILES)}")
 
-    set_editor_theme("Code")
-    set_editor_theme("Cursor")
+    editors = []
+    if set_editor_theme("Code", "code"):
+        editors.append("VS Code")
+    if set_editor_theme("Cursor", "cursor"):
+        editors.append("Cursor")
+
+    raycast_dir = DOTFILES / "theme" / "raycast"
+    raycast_dir.mkdir(parents=True, exist_ok=True)
+    raycast_theme = gen_raycast(colors, theme_name)
+    raycast_path = raycast_dir / f"{theme_name}.json"
+    raycast_path.write_text(json.dumps(raycast_theme, indent=2) + "\n")
+    import_url = raycast_import_url(raycast_theme)
+    (raycast_dir / f"{theme_name}.url.txt").write_text(import_url + "\n")
 
     (DOTFILES / "theme" / "current").write_text(theme_name + "\n")
-    print(f"Theme set to: {theme_name}")
+
+    print(f"Theme set to {theme_name}: starship, statusline, ghostty"
+          + (f", {', '.join(editors)}" if editors else "") + " updated.")
+    print(f"Raycast (no file import, open to add): {import_url}")
 
 
 if __name__ == "__main__":
