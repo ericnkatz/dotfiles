@@ -5,25 +5,25 @@ window-padding-y = 12
 macos-non-native-fullscreen = true
 
 # BEGIN GENERATED THEME (do not edit; run theme/generate-theme.py)
-background = "#14251a"
-foreground = "#eafaf0"
-cursor-color = "#eafaf0"
-selection-background = "#3f9668"
-selection-foreground = "#eafaf0"
-palette = 0=#14251a
-palette = 1=#cfe8d6
-palette = 2=#7abf95
-palette = 3=#96cdaa
-palette = 4=#3f9668
-palette = 5=#96cdaa
-palette = 6=#5cae80
-palette = 7=#eafaf0
-palette = 8=#3f9668
-palette = 9=#cfe8d6
-palette = 10=#7abf95
-palette = 11=#96cdaa
-palette = 12=#3f9668
-palette = 13=#96cdaa
-palette = 14=#5cae80
-palette = 15=#eafaf0
+background = "#1a1b26"
+foreground = "#a9b1d6"
+cursor-color = "#c0caf5"
+selection-background = "#292e42"
+selection-foreground = "#a9b1d6"
+palette = 0=#1a1b26
+palette = 1=#f7768e
+palette = 2=#9ece6a
+palette = 3=#e0af68
+palette = 4=#7aa2f7
+palette = 5=#ad8ee6
+palette = 6=#449dab
+palette = 7=#a9b1d6
+palette = 8=#414868
+palette = 9=#ff7a93
+palette = 10=#b9f27c
+palette = 11=#ff9e64
+palette = 12=#7da6ff
+palette = 13=#bb9af7
+palette = 14=#0db9d7
+palette = 15=#c0caf5
 # END GENERATED THEME

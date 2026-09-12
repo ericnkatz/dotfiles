@@ -7,13 +7,13 @@ input=$(cat)
 
 # Same palette as starship.toml [palettes.pastel_green]
 # BEGIN GENERATED THEME (do not edit; run theme/generate-theme.py)
-RED="207;232;214"  # #cfe8d6
-PEACH="179;219;192"  # #b3dbc0
-YELLOW="150;205;170"  # #96cdaa
-GREEN="122;191;149"  # #7abf95
-SAPPHIRE="92;174;128"  # #5cae80
-LAVENDER="63;150;104"  # #3f9668
-CRUST="20;37;26"  # #14251a
+RED="180;190;230"  # #b4bee6
+PEACH="157;166;205"  # #9da6cd
+YELLOW="134;143;180"  # #868fb4
+GREEN="111;119;154"  # #6f779a
+SAPPHIRE="88;96;129"  # #586081
+LAVENDER="65;72;104"  # #414868
+CRUST="26;27;38"  # #1a1b26
 # END GENERATED THEME
 
 R="\033[0m"

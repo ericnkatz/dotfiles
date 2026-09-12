@@ -174,13 +174,13 @@ min_time_to_notify = 45000
 
 [palettes.pastel_green]
 # BEGIN GENERATED THEME (do not edit; run theme/generate-theme.py)
-red = "#cfe8d6"
-peach = "#b3dbc0"
-yellow = "#96cdaa"
-green = "#7abf95"
-sapphire = "#5cae80"
-lavender = "#3f9668"
-crust = "#14251a"
+red = "#b4bee6"
+peach = "#9da6cd"
+yellow = "#868fb4"
+green = "#6f779a"
+sapphire = "#586081"
+lavender = "#414868"
+crust = "#1a1b26"
 # END GENERATED THEME
 
 [palettes.catppuccin_mocha]
