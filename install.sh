@@ -52,5 +52,26 @@ link "$DOTFILES_DIR/config/ghostty/config" "$HOME/.config/ghostty/config"
 link "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
 link "$DOTFILES_DIR/zprofile" "$HOME/.zprofile"
 link "$DOTFILES_DIR/bashrc" "$HOME/.bashrc"
+link "$DOTFILES_DIR/config/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+
+claude_settings="$HOME/.claude/settings.json"
+if [ -f "$claude_settings" ] && command -v jq &>/dev/null; then
+  tmp=$(mktemp)
+  jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh", "refreshInterval": 60}' \
+    "$claude_settings" > "$tmp" && mv "$tmp" "$claude_settings"
+  echo "Set statusLine in $claude_settings"
+else
+  mkdir -p "$HOME/.claude"
+  cat > "$claude_settings" <<'JSON'
+{
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh",
+    "refreshInterval": 60
+  }
+}
+JSON
+  echo "Created $claude_settings with statusLine"
+fi
 
 echo "Done."
