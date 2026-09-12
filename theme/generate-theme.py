@@ -2,9 +2,8 @@
 """Regenerate starship.toml, statusline.sh, and ghostty config color blocks
 from one theme/palettes/<name>.toml file.
 
-***REMOVED***
-***REMOVED***
-simple regex rather than pulling in a TOML library, since there's no nesting.
+Palette files are flat `key = "#rrggbb"` TOML - parsed with a simple regex
+rather than pulling in a TOML library, since there's no nesting.
 
 Each generated file has a marked block:
   # BEGIN GENERATED THEME (do not edit; run theme/generate-theme.py)
@@ -120,8 +119,6 @@ def gen_ghostty(colors: dict) -> str:
     selection_bg = pick(colors, "selection", "lighter_background", default=background)
     selection_fg = foreground
 
-***REMOVED***
-***REMOVED***
     muted = pick(colors, "muted", "dark_background", default=background)
     palette = {
         0: background,

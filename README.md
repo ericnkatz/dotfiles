@@ -5,13 +5,23 @@ and Linux (tested against Arch-based distros).
 
 ## Usage
 
-On a new machine:
+On a new machine, with the repo already cloned:
 
 ```sh
 git clone git@github.com:ericnkatz/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ./install.sh
 ```
+
+Or, without git/SSH keys set up yet — downloads a zip of the repo from
+GitHub, extracts it to `~/dotfiles`, and runs `install.sh` (requires the
+repo to be public):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ericnkatz/dotfiles/main/bootstrap.sh | bash
+```
+
+Re-running either form updates `~/dotfiles` in place and re-applies configs.
 
 This installs Homebrew if missing, installs/checks all packages in `Brewfile`
 (skips anything already installed), and symlinks the tracked configs into
@@ -68,14 +78,13 @@ This rewrites the `# BEGIN/END GENERATED THEME` block in each of
 Restart Ghostty and start a new Claude Code session to see the change (both
 read their config at startup, not live).
 
-Most palettes in `theme/palettes/` are vendored from
-***REMOVED***
-the community theme collection (same `colors.toml` shape) — run `ls theme/palettes` for the full list
-(catppuccin, everforest, gruvbox, nord, tokyo-night, etc.). `pastel-green.toml`
-is the original hand-tuned default and is reproduced exactly rather than
-derived; every other palette's six powerline colors are approximated by a
-gradient between its `light_foreground` and `muted` colors, since a community theme collection
-palettes don't define powerline-shaped stops directly.
+Most palettes in `theme/palettes/` are vendored from a community theme
+collection (flat `colors.toml` shape) — run `ls theme/palettes` for the full
+list (catppuccin, everforest, gruvbox, nord, tokyo-night, etc.).
+`pastel-green.toml` is the original hand-tuned default and is reproduced
+exactly rather than derived; every other palette's six powerline colors are
+approximated by a gradient between its `light_foreground` and `muted`
+colors, since those palettes don't define powerline-shaped stops directly.
 
 `theme/current` tracks the last-generated theme name (informational only —
 not read by anything).
