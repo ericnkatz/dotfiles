@@ -1,0 +1,41 @@
+# Default theme - the original hand-tuned starship.toml pastel_green palette.
+# These six keys are reproduced exactly (see generate-theme.py); every other
+# palette in this directory instead derives them from a
+# light_foreground -> muted gradient.
+mode = "dark"
+
+red = "#cfe8d6"
+peach = "#b3dbc0"
+yellow = "#96cdaa"
+green = "#7abf95"
+sapphire = "#5cae80"
+lavender = "#3f9668"
+crust = "#14251a"
+
+# Ghostty / general-purpose colors, general-purpose colors
+accent = "#7abf95"
+selection = "#3f9668"
+muted = "#3f9668"
+
+background = "#14251a"
+dark_background = "#0e1a13"
+darker_background = "#0a130e"
+lighter_background = "#1c3324"
+
+foreground = "#eafaf0"
+dark_foreground = "#96cdaa"
+light_foreground = "#cfe8d6"
+bright_foreground = "#eafaf0"
+
+blue = "#3f9668"
+magenta = "#96cdaa"
+cyan = "#5cae80"
+orange = "#b3dbc0"
+brown = "#3f9668"
+
+bright_red = "#cfe8d6"
+bright_yellow = "#96cdaa"
+bright_green = "#7abf95"
+bright_cyan = "#5cae80"
+bright_blue = "#3f9668"
+bright_magenta = "#96cdaa"

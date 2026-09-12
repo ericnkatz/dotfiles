@@ -6,13 +6,15 @@ set -uo pipefail
 input=$(cat)
 
 # Same palette as starship.toml [palettes.pastel_green]
-RED="207;232;214"      # #cfe8d6
-PEACH="179;219;192"    # #b3dbc0
-YELLOW="150;205;170"   # #96cdaa
-GREEN="122;191;149"    # #7abf95
+# BEGIN GENERATED THEME (do not edit; run theme/generate-theme.py)
+RED="207;232;214"  # #cfe8d6
+PEACH="179;219;192"  # #b3dbc0
+YELLOW="150;205;170"  # #96cdaa
+GREEN="122;191;149"  # #7abf95
 SAPPHIRE="92;174;128"  # #5cae80
 LAVENDER="63;150;104"  # #3f9668
-CRUST="20;37;26"       # #14251a
+CRUST="20;37;26"  # #14251a
+# END GENERATED THEME
 
 R="\033[0m"
 CAP=$''   # opening powerline cap

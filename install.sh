@@ -3,6 +3,17 @@ set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+THEME=""
+for arg in "$@"; do
+  case "$arg" in
+    --theme=*) THEME="${arg#--theme=}" ;;
+    --theme)
+      echo "Usage: --theme=<name> (e.g. --theme=everforest). See theme/palettes/ for options." >&2
+      exit 1
+      ;;
+  esac
+done
+
 link() {
   local src="$1" dest="$2"
   mkdir -p "$(dirname "$dest")"
@@ -48,11 +59,33 @@ if [ "$(uname)" = "Linux" ]; then
   fi
 fi
 
+if [ -n "$THEME" ]; then
+  if [ ! -f "$DOTFILES_DIR/theme/palettes/$THEME.toml" ]; then
+    echo "Unknown theme '$THEME'. Available:" >&2
+    ls "$DOTFILES_DIR/theme/palettes" | sed 's/\.toml$//' | sed 's/^/  /' >&2
+    exit 1
+  fi
+  echo "Generating theme: $THEME"
+  python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME"
+fi
+
 link "$DOTFILES_DIR/config/ghostty/config" "$HOME/.config/ghostty/config"
+link "$DOTFILES_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 link "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
 link "$DOTFILES_DIR/zprofile" "$HOME/.zprofile"
 link "$DOTFILES_DIR/bashrc" "$HOME/.bashrc"
 link "$DOTFILES_DIR/config/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+link "$DOTFILES_DIR/config/mise/config.toml" "$HOME/.config/mise/config.toml"
+
+if command -v mise &>/dev/null; then
+  echo "Installing tool versions from mise config..."
+  mise install
+fi
+
+if command -v mise &>/dev/null; then
+  echo "Installing agent skills (addyosmani/agent-skills) for Claude/Cursor/Codex..."
+  mise exec -- npx --yes skills add addyosmani/agent-skills -g -a '*' -y || true
+fi
 
 claude_settings="$HOME/.claude/settings.json"
 if [ -f "$claude_settings" ] && command -v jq &>/dev/null; then

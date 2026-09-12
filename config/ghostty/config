@@ -3,3 +3,27 @@ font-size = 14
 window-padding-x = 12
 window-padding-y = 12
 macos-non-native-fullscreen = true
+
+# BEGIN GENERATED THEME (do not edit; run theme/generate-theme.py)
+background = "#14251a"
+foreground = "#eafaf0"
+cursor-color = "#eafaf0"
+selection-background = "#3f9668"
+selection-foreground = "#eafaf0"
+palette = 0=#14251a
+palette = 1=#cfe8d6
+palette = 2=#7abf95
+palette = 3=#96cdaa
+palette = 4=#3f9668
+palette = 5=#96cdaa
+palette = 6=#5cae80
+palette = 7=#eafaf0
+palette = 8=#3f9668
+palette = 9=#cfe8d6
+palette = 10=#7abf95
+palette = 11=#96cdaa
+palette = 12=#3f9668
+palette = 13=#96cdaa
+palette = 14=#5cae80
+palette = 15=#eafaf0
+# END GENERATED THEME
