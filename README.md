@@ -38,10 +38,14 @@ generated theme on other systems.
 
 ### Cross-platform notes
 
-- `Brewfile` casks (Ghostty app, Nerd Font) only work on macOS, since Homebrew
-  Cask doesn't support Linux. On Linux, `install.sh` installs Ghostty via
-  `pacman` (if present) and downloads the Nerd Font directly from its GitHub
-  release instead.
+- `Brewfile` casks (Ghostty app, Nerd Font, 1Password) only work on macOS,
+  since Homebrew Cask doesn't support Linux. On Linux, `install.sh` installs
+  Ghostty via `pacman` (if present) and downloads the Nerd Font directly from
+  its GitHub release instead.
+- 1Password (app + `op` CLI) has no official Arch package - only an AUR one,
+  which 1Password itself maintains and directs Arch users to. On Omarchy,
+  `install.sh` uses `omarchy pkg aur add`; elsewhere it uses whichever AUR
+  helper (`yay`/`paru`) is present, falling back to a manual-install link.
 - `zprofile` detects whether Homebrew lives at `/opt/homebrew` (macOS) or
   `/home/linuxbrew/.linuxbrew` (Linux) and sets up the shell env accordingly.
 - The Ghostty config file itself needs no changes across platforms — Ghostty

@@ -150,6 +150,32 @@ if [ "$OS" = "Linux" ]; then
     fi
   fi
 
+  # 1Password has no official pacman repo - the desktop app and CLI are only
+  # published to the AUR (1password.com/downloads/linux confirms AUR for Arch).
+  if ! command -v 1password &>/dev/null; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg aur add 1password
+      installed "1password"
+    elif [ -n "$aur_helper" ]; then
+      "$aur_helper" -S --needed --noconfirm 1password >/dev/null
+      installed "1password"
+    else
+      skipped "1password" "no AUR helper found; see https://1password.com/downloads/linux"
+    fi
+  fi
+
+  if ! command -v op &>/dev/null; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg aur add 1password-cli
+      installed "1password-cli"
+    elif [ -n "$aur_helper" ]; then
+      "$aur_helper" -S --needed --noconfirm 1password-cli >/dev/null
+      installed "1password-cli"
+    else
+      skipped "1password-cli" "no AUR helper found; see https://1password.com/downloads/linux"
+    fi
+  fi
+
   if ! fc-list | grep -qi "0xProto Nerd Font"; then
     font_dir="$HOME/.local/share/fonts"
     mkdir -p "$font_dir"

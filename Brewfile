@@ -23,4 +23,7 @@ if OS.mac?
   # Editors
   cask "visual-studio-code"
   cask "cursor"
+  # Password manager + its CLI (op)
+  cask "1password"
+  cask "1password-cli"
 end
