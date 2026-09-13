@@ -26,4 +26,8 @@ palette = 12=#7da6ff
 palette = 13=#bb9af7
 palette = 14=#0db9d7
 palette = 15=#c0caf5
+macos-icon = custom-style
+macos-icon-frame = aluminum
+macos-icon-ghost-color = "#7aa2f7"
+macos-icon-screen-color = "#0e0e14,#1a1b26"
 # END GENERATED THEME

@@ -148,6 +148,17 @@ def gen_ghostty(colors: dict) -> str:
     ]
     for i in range(16):
         lines.append(f"palette = {i}={palette[i]}\n")
+
+    # macOS app icon (custom-style): aluminum frame always, ghost/screen
+    # colors derived from the palette so the icon matches the theme.
+    accent = pick(colors, "accent", "blue")
+    darker_background = pick(colors, "darker_background", default=background)
+    lines += [
+        "macos-icon = custom-style\n",
+        "macos-icon-frame = aluminum\n",
+        f'macos-icon-ghost-color = "{accent}"\n',
+        f'macos-icon-screen-color = "{darker_background},{background}"\n',
+    ]
     return "".join(lines)
 
 
