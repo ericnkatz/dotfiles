@@ -23,12 +23,14 @@ curl -fsSL https://raw.githubusercontent.com/ericnkatz/dotfiles/main/bootstrap.s
 
 Re-running either form updates `~/dotfiles` in place and re-applies configs.
 
-This installs Homebrew if missing, installs/checks all packages in `Brewfile`
-(skips anything already installed), and symlinks the tracked configs into
-place (existing files are backed up with a `.bak.<timestamp>` suffix, not
-overwritten). Pass `--theme=<name>` to also generate a color theme before
-linking (see [Theming](#theming)); omit it to keep whatever's already
-generated (defaults to `pastel-green`).
+On macOS this installs Homebrew if missing and installs/checks the packages in
+`Brewfile`. On Omarchy it uses `omarchy pkg` for Arch/AUR packages and `mise`
+for the cross-platform Vault and Atlassian CLIs, without installing Linuxbrew.
+It then symlinks the tracked configs into place (existing files are backed up
+with a `.bak.<timestamp>` suffix, not overwritten). Pass `--theme=<name>` to
+also generate a color theme before linking (see [Theming](#theming)); omit it
+to keep the current Aether palette on Omarchy or the repository's current
+generated theme on other systems.
 
 ```sh
 ./install.sh --theme=everforest
@@ -50,9 +52,10 @@ generated (defaults to `pastel-green`).
 
 Node (and other language runtimes, if added later) are managed by
 [mise](https://mise.jdx.dev) rather than Homebrew, so versions can be pinned
-per-project. `config/mise/config.toml` pins the global default
-(`node = "lts"`); `install.sh` runs `mise install` to fetch whatever's pinned
-there after linking configs.
+per-project. During installation, an existing Node newer than the current LTS
+is preserved; otherwise the current LTS is selected. The machine-specific
+choice is written to `~/.config/mise/conf.d/node.toml`, then `mise install`
+fetches any configured tools that are missing.
 
 ## Agent skills
 
@@ -64,19 +67,25 @@ for every detected agent (Claude Code, Cursor, Codex, etc.) via the
 
 ## Theming
 
-`starship.toml`, the Claude Code statusline, and Ghostty's colors all derive
-from one palette file in `theme/palettes/<name>.toml`, so switching themes is
-one command instead of editing three files by hand:
+On macOS and other non-Omarchy systems, Starship, Codex, Ghostty, and the editor
+themes derive from one palette file in `theme/palettes/<name>.toml`:
 
 ```sh
 python3 theme/generate-theme.py everforest   # or any name in theme/palettes/
 ```
 
-This rewrites the `# BEGIN/END GENERATED THEME` block in each of
-`config/starship.toml`, `config/claude/statusline.sh`, and
-`config/ghostty/config` — everything else in those files is left untouched.
-Restart Ghostty and start a new Claude Code session to see the change (both
-read their config at startup, not live).
+On Omarchy systems with Aether, `./install.sh --theme=<name>` imports that
+palette into Aether first. Aether then owns the Omarchy, Ghostty, VS Code, and
+other supported application cascade. With no `--theme`, the installer preserves
+and reads Aether's current palette. The dotfiles generator only fills the gaps:
+Codex receives the Aether palette, while Starship keeps its established Tokyo
+Night powerline colors.
+
+Claude's existing status-line appearance is intentionally left untouched.
+
+When installed, Codex gets a matching native status-line layout and selects the
+generated theme in its `[tui]` configuration. Codex supplies its own status-line
+fields and separators, so it cannot reproduce a powerline layout exactly.
 
 Most palettes in `theme/palettes/` are vendored from a community theme
 collection (flat `colors.toml` shape) — run `ls theme/palettes` for the full

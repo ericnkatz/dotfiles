@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate starship.toml, statusline.sh, and ghostty config color blocks
+"""Regenerate terminal, agent, and editor themes
 from one theme/palettes/<name>.toml file.
 
 Palette files are flat `key = "#rrggbb"` TOML - parsed with a simple regex
@@ -11,6 +11,7 @@ Each generated file has a marked block:
   # END GENERATED THEME
 Only that block is replaced; everything else in the file is left alone.
 """
+import argparse
 import json
 import re
 import shutil
@@ -148,6 +149,40 @@ def gen_ghostty(colors: dict) -> str:
     for i in range(16):
         lines.append(f"palette = {i}={palette[i]}\n")
     return "".join(lines)
+
+
+def gen_codex_theme(colors: dict, theme_name: str) -> str:
+    """Build the TextMate theme Codex uses for syntax and status-line colors."""
+    foreground = pick(colors, "foreground")
+    background = pick(colors, "background")
+    settings = [
+        {
+            "settings": {
+                "background": background,
+                "foreground": foreground,
+                "caret": pick(colors, "bright_foreground", "foreground"),
+                "selection": pick(colors, "selection", "lighter_background", default=background),
+                "invisibles": pick(colors, "muted", "dark_foreground", default=foreground),
+                "lineHighlight": pick(colors, "dark_background", default=background),
+            }
+        },
+        *[
+            {
+                "name": label,
+                "scope": ", ".join(scopes),
+                "settings": {"foreground": pick(colors, key, default=foreground)},
+            }
+            for label, scopes, key in TOKEN_SCOPES
+        ],
+    ]
+
+    # plistlib emits the .tmTheme property-list format accepted by Codex.
+    import plistlib
+    payload = {
+        "name": f"Dotfiles ({theme_name.replace('-', ' ').title()})",
+        "settings": settings,
+    }
+    return plistlib.dumps(payload, fmt=plistlib.FMT_XML, sort_keys=False).decode()
 
 
 def gen_raycast(colors: dict, theme_name: str) -> str:
@@ -360,6 +395,9 @@ def register_extension(app_name: str) -> None:
     for a local unpacked extension, used here as the reference shape."""
     ext_dir = (Path.home() / ".vscode" / "extensions" if app_name == "Code"
                else Path.home() / ".cursor" / "extensions")
+    # A freshly installed editor may put its CLI on PATH before it has ever
+    # launched and created its extension registry directory.
+    ext_dir.mkdir(parents=True, exist_ok=True)
     ext_path = ext_dir / "dotfiles-theme"
 
     obsolete_path = ext_dir / ".obsolete"
@@ -431,8 +469,15 @@ def apply(path: Path, comment_prefix: str, body: str) -> None:
 
 
 def main() -> None:
-    theme_name = sys.argv[1] if len(sys.argv) > 1 else "pastel-green"
-    palette_path = PALETTES_DIR / f"{theme_name}.toml"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("theme", nargs="?", default="pastel-green")
+    parser.add_argument("--palette", type=Path)
+    parser.add_argument("--starship-palette", type=Path)
+    parser.add_argument("--aether-managed", action="store_true")
+    args = parser.parse_args()
+
+    theme_name = args.theme
+    palette_path = args.palette or PALETTES_DIR / f"{theme_name}.toml"
     if not palette_path.exists():
         available = sorted(p.stem for p in PALETTES_DIR.glob("*.toml"))
         print(f"Unknown theme '{theme_name}'. Available: {', '.join(available)}", file=sys.stderr)
@@ -440,37 +485,51 @@ def main() -> None:
 
     colors = parse_palette(palette_path)
     derived = build_derived(colors)
+    starship_colors = (
+        build_derived(parse_palette(args.starship_palette))
+        if args.starship_palette else derived
+    )
 
-    apply(DOTFILES / "config" / "starship.toml", "#", gen_starship(colors, derived))
-    apply(DOTFILES / "config" / "claude" / "statusline.sh", "#", gen_statusline(derived))
-    apply(DOTFILES / "config" / "ghostty" / "config", "#", gen_ghostty(colors))
+    apply(DOTFILES / "config" / "starship.toml", "#", gen_starship(colors, starship_colors))
+    if not args.aether_managed:
+        apply(DOTFILES / "config" / "ghostty" / "config", "#", gen_ghostty(colors))
 
-    ext_dir = DOTFILES / "config" / "vscode" / "dotfiles-theme"
-    themes_dir = ext_dir / "themes"
-    themes_dir.mkdir(parents=True, exist_ok=True)
-    package_json, theme_json = gen_vscode_theme(colors, theme_name)
-    (ext_dir / "package.json").write_text(package_json)
-    (themes_dir / "dotfiles.json").write_text(theme_json)
+    codex_theme_dir = DOTFILES / "config" / "codex" / "themes"
+    codex_theme_dir.mkdir(parents=True, exist_ok=True)
+    (codex_theme_dir / "dotfiles.tmTheme").write_text(
+        gen_codex_theme(colors, theme_name)
+    )
 
     editors = []
-    if set_editor_theme("Code", "code"):
-        editors.append("VS Code")
-    if set_editor_theme("Cursor", "cursor"):
-        editors.append("Cursor")
+    import_url = None
+    if not args.aether_managed:
+        ext_dir = DOTFILES / "config" / "vscode" / "dotfiles-theme"
+        themes_dir = ext_dir / "themes"
+        themes_dir.mkdir(parents=True, exist_ok=True)
+        package_json, theme_json = gen_vscode_theme(colors, theme_name)
+        (ext_dir / "package.json").write_text(package_json)
+        (themes_dir / "dotfiles.json").write_text(theme_json)
 
-    raycast_dir = DOTFILES / "theme" / "raycast"
-    raycast_dir.mkdir(parents=True, exist_ok=True)
-    raycast_theme = gen_raycast(colors, theme_name)
-    raycast_path = raycast_dir / f"{theme_name}.json"
-    raycast_path.write_text(json.dumps(raycast_theme, indent=2) + "\n")
-    import_url = raycast_import_url(raycast_theme)
-    (raycast_dir / f"{theme_name}.url.txt").write_text(import_url + "\n")
+        if set_editor_theme("Code", "code"):
+            editors.append("VS Code")
+        if set_editor_theme("Cursor", "cursor"):
+            editors.append("Cursor")
+
+        raycast_dir = DOTFILES / "theme" / "raycast"
+        raycast_dir.mkdir(parents=True, exist_ok=True)
+        raycast_theme = gen_raycast(colors, theme_name)
+        raycast_path = raycast_dir / f"{theme_name}.json"
+        raycast_path.write_text(json.dumps(raycast_theme, indent=2) + "\n")
+        import_url = raycast_import_url(raycast_theme)
+        (raycast_dir / f"{theme_name}.url.txt").write_text(import_url + "\n")
 
     (DOTFILES / "theme" / "current").write_text(theme_name + "\n")
 
-    print(f"Theme set to {theme_name}: starship, statusline, ghostty"
+    managed = "Starship and Codex" if args.aether_managed else "Starship, Ghostty, and Codex"
+    print(f"Theme set to {theme_name}: {managed}"
           + (f", {', '.join(editors)}" if editors else "") + " updated.")
-    print(f"Raycast (no file import, open to add): {import_url}")
+    if import_url:
+        print(f"Raycast (no file import, open to add): {import_url}")
 
 
 if __name__ == "__main__":

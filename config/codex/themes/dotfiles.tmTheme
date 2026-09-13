@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>Dotfiles (Aether)</string>
+	<key>settings</key>
+	<array>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#040208</string>
+				<key>foreground</key>
+				<string>#e8e6cf</string>
+				<key>caret</key>
+				<string>#eeecdb</string>
+				<key>selection</key>
+				<string>#1d1b21</string>
+				<key>invisibles</key>
+				<string>#636167</string>
+				<key>lineHighlight</key>
+				<string>#030206</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Comments</string>
+			<key>scope</key>
+			<string>comment</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#aead9b</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Strings</string>
+			<key>scope</key>
+			<string>string</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#8ca12c</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Numbers, booleans, constants</string>
+			<key>scope</key>
+			<string>constant.numeric, constant.language, constant.character</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#ce7179</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Keywords, storage, operators</string>
+			<key>scope</key>
+			<string>keyword, storage, keyword.operator</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#b369b7</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Functions</string>
+			<key>scope</key>
+			<string>entity.name.function, support.function</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#6076fb</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Types, classes</string>
+			<key>scope</key>
+			<string>entity.name.type, entity.name.class, support.type, support.class</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#9bac38</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Variables, parameters</string>
+			<key>scope</key>
+			<string>variable, variable.parameter</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#e8e6cf</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Tags (markup/html)</string>
+			<key>scope</key>
+			<string>entity.name.tag</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#c55861</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>name</key>
+			<string>Attributes</string>
+			<key>scope</key>
+			<string>entity.other.attribute-name</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#8292f4</string>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>

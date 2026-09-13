@@ -17,19 +17,16 @@ fi
 TAG="${DIM}dotfiles${RESET}"
 
 THEME=""
+THEME_WAS_PASSED=false
 for arg in "$@"; do
   case "$arg" in
-    --theme=*) THEME="${arg#--theme=}" ;;
+    --theme=*) THEME="${arg#--theme=}"; THEME_WAS_PASSED=true ;;
     --theme)
       echo "Usage: --theme=<name> (e.g. --theme=everforest). See theme/palettes/ for options." >&2
       exit 1
       ;;
   esac
 done
-if [ -z "$THEME" ] && [ -f "$DOTFILES_DIR/theme/current" ]; then
-  THEME="$(cat "$DOTFILES_DIR/theme/current")"
-fi
-THEME="${THEME:-pastel-green}"
 
 INSTALLED=()   # things that needed installing this run
 SKIPPED=()     # things that needed manual action (no installer available)
@@ -48,14 +45,25 @@ link() {
 
 echo "$TAG ${BOLD}setting up${RESET} $(basename "$DOTFILES_DIR")"
 
+OS="$(uname)"
+IS_OMARCHY=false
+if [ "$OS" = "Linux" ] && command -v omarchy &>/dev/null; then
+  IS_OMARCHY=true
+fi
+
 # --- prerequisites -----------------------------------------------------
 
-if ! command -v brew &>/dev/null; then
-  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" >/dev/null
-  if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+# Omarchy is Arch-based and already provides a package-management facade. Do
+# not install a second system package manager there. Homebrew remains the
+# package manager for macOS and the fallback for other supported Linux hosts.
+if [ "$IS_OMARCHY" = false ]; then
+  if ! command -v brew &>/dev/null; then
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+      eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    fi
+    installed "Homebrew"
   fi
-  installed "Homebrew"
 fi
 
 if ! command -v mise &>/dev/null; then
@@ -64,30 +72,44 @@ if ! command -v mise &>/dev/null; then
   installed "mise"
 fi
 
-# --- Homebrew packages (Brewfile) --------------------------------------
+# --- system packages ---------------------------------------------------
 
-# brew bundle list returns tap-qualified names (e.g. atlassian/acli/acli)
-# while brew list returns bare names (acli) - compare basenames so already-
-# installed tapped formulae aren't reported as new.
-new_pkgs="$(comm -23 \
-  <(brew bundle list --file="$DOTFILES_DIR/Brewfile" 2>/dev/null | sed 's#.*/##' | sort) \
-  <(brew list --formula -1 2>/dev/null | sort))"
-if [ "$(uname)" = "Darwin" ]; then
-  new_pkgs="$new_pkgs
+if [ "$IS_OMARCHY" = true ]; then
+  for spec in "github-cli:gh" "starship:starship"; do
+    pkg="${spec%%:*}"
+    cmd="${spec#*:}"
+    if ! command -v "$cmd" &>/dev/null; then
+      omarchy pkg add "$pkg"
+      installed "$pkg"
+    fi
+  done
+else
+  # brew bundle list returns tap-qualified names (e.g. atlassian/acli/acli)
+  # while brew list returns bare names (acli) - compare basenames so already-
+  # installed tapped formulae aren't reported as new.
+  new_pkgs="$(comm -23 \
+    <(brew bundle list --file="$DOTFILES_DIR/Brewfile" 2>/dev/null | sed 's#.*/##' | sort) \
+    <(brew list --formula -1 2>/dev/null | sort))"
+  if [ "$OS" = "Darwin" ]; then
+    new_pkgs="$new_pkgs
 $(comm -23 \
     <(brew bundle list --file="$DOTFILES_DIR/Brewfile" --casks 2>/dev/null | sed 's#.*/##' | sort) \
     <(brew list --cask -1 2>/dev/null | sort))"
+  fi
+  brew bundle install --file="$DOTFILES_DIR/Brewfile" --quiet >/dev/null
+  while IFS= read -r pkg; do
+    [ -n "$pkg" ] && installed "$pkg"
+  done <<< "$new_pkgs"
 fi
-brew bundle install --file="$DOTFILES_DIR/Brewfile" --quiet >/dev/null
-while IFS= read -r pkg; do
-  [ -n "$pkg" ] && installed "$pkg"
-done <<< "$new_pkgs"
 
 # Homebrew Cask (ghostty, fonts) only works on macOS. On Linux, install the
 # same things via the system package manager / direct download instead.
-if [ "$(uname)" = "Linux" ]; then
+if [ "$OS" = "Linux" ]; then
   if ! command -v ghostty &>/dev/null; then
-    if command -v pacman &>/dev/null; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg add ghostty
+      installed "ghostty"
+    elif command -v pacman &>/dev/null; then
       sudo pacman -S --needed --noconfirm ghostty >/dev/null
       installed "ghostty"
     else
@@ -105,7 +127,10 @@ if [ "$(uname)" = "Linux" ]; then
   fi
 
   if ! command -v code &>/dev/null; then
-    if [ -n "$aur_helper" ]; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg aur add visual-studio-code-bin
+      installed "visual-studio-code"
+    elif [ -n "$aur_helper" ]; then
       "$aur_helper" -S --needed --noconfirm visual-studio-code-bin >/dev/null
       installed "visual-studio-code"
     else
@@ -114,7 +139,10 @@ if [ "$(uname)" = "Linux" ]; then
   fi
 
   if ! command -v cursor &>/dev/null; then
-    if [ -n "$aur_helper" ]; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg aur add cursor-bin
+      installed "cursor"
+    elif [ -n "$aur_helper" ]; then
       "$aur_helper" -S --needed --noconfirm cursor-bin >/dev/null
       installed "cursor"
     else
@@ -137,25 +165,82 @@ fi
 
 # --- theme + configs -----------------------------------------------------
 
-if [ ! -f "$DOTFILES_DIR/theme/palettes/$THEME.toml" ]; then
+AETHER_MANAGED=false
+if [ "$IS_OMARCHY" = true ] && command -v aether &>/dev/null \
+  && { [ "$THEME_WAS_PASSED" = true ] || [ -f "$HOME/.config/aether/theme/colors.toml" ]; }; then
+  AETHER_MANAGED=true
+fi
+
+if [ "$AETHER_MANAGED" = true ] && [ "$THEME_WAS_PASSED" = false ]; then
+  # With no explicit choice, preserve the palette currently active in Aether.
+  THEME="aether"
+  palette_path="$HOME/.config/aether/theme/colors.toml"
+elif [ -z "$THEME" ] && [ -f "$DOTFILES_DIR/theme/current" ]; then
+  THEME="$(cat "$DOTFILES_DIR/theme/current")"
+fi
+THEME="${THEME:-pastel-green}"
+
+if [ -z "${palette_path:-}" ] && [ ! -f "$DOTFILES_DIR/theme/palettes/$THEME.toml" ]; then
   echo "Unknown theme '$THEME'. Available:" >&2
   ls "$DOTFILES_DIR/theme/palettes" | sed 's/\.toml$//' | sed 's/^/  /' >&2
   exit 1
 fi
-theme_out="$(python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME")"
+
+if [ "$AETHER_MANAGED" = true ]; then
+  if [ "$THEME_WAS_PASSED" = true ]; then
+    # Aether applies this once to Omarchy and every application it supports.
+    aether --import-colors-toml "$DOTFILES_DIR/theme/palettes/$THEME.toml"
+    palette_path="$HOME/.config/aether/theme/colors.toml"
+  fi
+  theme_out="$(python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME" \
+    --palette "$palette_path" --starship-palette "$DOTFILES_DIR/theme/palettes/tokyo-night.toml" \
+    --aether-managed)"
+else
+  theme_out="$(python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME")"
+fi
 echo "$theme_out" | sed "s/^/$TAG ${CYAN}theme${RESET}   /"
 
-link "$DOTFILES_DIR/config/vscode/dotfiles-theme" "$HOME/.vscode/extensions/dotfiles-theme"
-link "$DOTFILES_DIR/config/vscode/dotfiles-theme" "$HOME/.cursor/extensions/dotfiles-theme"
-link "$DOTFILES_DIR/config/ghostty/config" "$HOME/.config/ghostty/config"
+if [ "$AETHER_MANAGED" = false ]; then
+  link "$DOTFILES_DIR/config/vscode/dotfiles-theme" "$HOME/.vscode/extensions/dotfiles-theme"
+  link "$DOTFILES_DIR/config/vscode/dotfiles-theme" "$HOME/.cursor/extensions/dotfiles-theme"
+  link "$DOTFILES_DIR/config/ghostty/config" "$HOME/.config/ghostty/config"
+fi
 link "$DOTFILES_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 link "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
 link "$DOTFILES_DIR/zprofile" "$HOME/.zprofile"
 link "$DOTFILES_DIR/bashrc" "$HOME/.bashrc"
-link "$DOTFILES_DIR/config/claude/statusline.sh" "$HOME/.claude/statusline.sh"
 link "$DOTFILES_DIR/config/mise/config.toml" "$HOME/.config/mise/config.toml"
 
+if command -v codex &>/dev/null || [ -d "$HOME/.codex" ]; then
+  link "$DOTFILES_DIR/config/codex/themes/dotfiles.tmTheme" "$HOME/.codex/themes/dotfiles.tmTheme"
+fi
+
+if command -v claude &>/dev/null || [ -d "$HOME/.claude" ]; then
+  link "$DOTFILES_DIR/config/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+fi
+
 if command -v mise &>/dev/null; then
+  # Keep a newer Node that is already installed. Otherwise use the current
+  # LTS. This machine-specific choice lives outside the tracked config so one
+  # machine's Node version does not rewrite the dotfiles repository.
+  node_config_dir="$HOME/.config/mise/conf.d"
+  node_config="$node_config_dir/node.toml"
+  current_node=""
+  if command -v node &>/dev/null; then
+    current_node="$(node -p 'process.versions.node' 2>/dev/null || true)"
+  fi
+  node_lts="$(mise latest node@lts)"
+  node_choice="$node_lts"
+  if [ -n "$current_node" ] && [ "$(printf '%s\n%s\n' "$node_lts" "$current_node" | sort -V | tail -n1)" = "$current_node" ]; then
+    node_path="$(readlink -f "$(command -v node)")"
+    if [[ "$node_path" == "$HOME/.local/share/mise/installs/node/"* ]]; then
+      node_choice="$current_node"
+    else
+      node_choice="system"
+    fi
+  fi
+  mkdir -p "$node_config_dir"
+  printf '[tools]\nnode = "%s"\n' "$node_choice" > "$node_config"
   mise install
 fi
 
@@ -167,14 +252,15 @@ if [ ! -d "$agent_skills_dir" ] || [ -z "$(ls -A "$agent_skills_dir" 2>/dev/null
   fi
 fi
 
-claude_settings="$HOME/.claude/settings.json"
-if [ -f "$claude_settings" ] && command -v jq &>/dev/null; then
-  tmp=$(mktemp)
-  jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh", "refreshInterval": 60}' \
-    "$claude_settings" > "$tmp" && mv "$tmp" "$claude_settings"
-else
-  mkdir -p "$HOME/.claude"
-  cat > "$claude_settings" <<'JSON'
+if command -v claude &>/dev/null || [ -d "$HOME/.claude" ]; then
+  claude_settings="$HOME/.claude/settings.json"
+  if [ -f "$claude_settings" ] && command -v jq &>/dev/null; then
+    tmp=$(mktemp)
+    jq '.statusLine = {"type": "command", "command": "~/.claude/statusline.sh", "refreshInterval": 60}' \
+      "$claude_settings" > "$tmp" && mv "$tmp" "$claude_settings"
+  else
+    mkdir -p "$HOME/.claude"
+    cat > "$claude_settings" <<'JSON'
 {
   "statusLine": {
     "type": "command",
@@ -183,6 +269,11 @@ else
   }
 }
 JSON
+  fi
+fi
+
+if command -v codex &>/dev/null || [ -d "$HOME/.codex" ]; then
+  python3 "$DOTFILES_DIR/config/codex/configure-statusline.py" "$HOME/.codex/config.toml"
 fi
 
 # --- summary -----------------------------------------------------------

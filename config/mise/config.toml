@@ -1,5 +1,10 @@
 [tools]
-node = "lts"
+# On Omarchy/Linux these replace the Homebrew formulae. mise's registry uses
+# the vendors' release artifacts and keeps the CLIs cross-platform.
+acli = { version = "latest", os = ["linux"] }
+codex = "latest"
+gh = "latest"
+vault = { version = "latest", os = ["linux"] }
 
 [settings]
 auto_update = true
