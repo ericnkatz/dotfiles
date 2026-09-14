@@ -600,7 +600,7 @@ def main() -> None:
     print(f"Theme set to {theme_name}: {managed}"
           + (f", {', '.join(editors)}" if editors else "") + " updated.")
     if import_url:
-        print(f"Raycast (no file import, open to add): {import_url}")
+        print(f"Raycast:\n    {import_url}")
 
 
 if __name__ == "__main__":
