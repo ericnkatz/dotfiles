@@ -26,4 +26,6 @@ if OS.mac?
   # Password manager + its CLI (op)
   cask "1password"
   cask "1password-cli"
+  # VPN mesh networking (installs the app + tailscale/tailscaled CLI)
+  cask "tailscale"
 end

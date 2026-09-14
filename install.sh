@@ -176,6 +176,18 @@ if [ "$OS" = "Linux" ]; then
     fi
   fi
 
+  if ! command -v tailscale &>/dev/null; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg add tailscale
+      installed "tailscale"
+    elif command -v pacman &>/dev/null; then
+      sudo pacman -S --needed --noconfirm tailscale >/dev/null
+      installed "tailscale"
+    else
+      skipped "tailscale" "no pacman found; see https://tailscale.com/download/linux"
+    fi
+  fi
+
   if ! fc-list | grep -qi "0xProto Nerd Font"; then
     font_dir="$HOME/.local/share/fonts"
     mkdir -p "$font_dir"
@@ -235,6 +247,7 @@ link "$DOTFILES_DIR/config/starship.toml" "$HOME/.config/starship.toml"
 link "$DOTFILES_DIR/zshrc" "$HOME/.zshrc"
 link "$DOTFILES_DIR/zprofile" "$HOME/.zprofile"
 link "$DOTFILES_DIR/bashrc" "$HOME/.bashrc"
+link "$DOTFILES_DIR/hushlogin" "$HOME/.hushlogin"
 link "$DOTFILES_DIR/config/mise/config.toml" "$HOME/.config/mise/config.toml"
 
 if command -v codex &>/dev/null || [ -d "$HOME/.codex" ]; then
