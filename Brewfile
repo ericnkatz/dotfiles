@@ -27,8 +27,13 @@ if OS.mac?
   cask "1password"
   cask "1password-cli"
   # VPN mesh networking (installs the app + tailscale/tailscaled CLI).
-  # Skipped if the CLI is already present (e.g. installed outside Homebrew).
-  unless system("command -v tailscale >/dev/null 2>&1")
+  # Skipped if already present (e.g. installed outside Homebrew). Checking
+  # known install paths directly rather than `command -v`/PATH, since
+  # Homebrew's internal Ruby runs with a stripped PATH that omits
+  # /usr/local/bin and wouldn't find a non-Homebrew tailscale there.
+  unless File.exist?("/Applications/Tailscale.app") ||
+         File.exist?("/usr/local/bin/tailscale") ||
+         File.exist?("/opt/homebrew/bin/tailscale")
     cask "tailscale-app"
   end
 end
