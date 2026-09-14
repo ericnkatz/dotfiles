@@ -3,24 +3,24 @@
 <plist version="1.0">
 <dict>
 	<key>name</key>
-	<string>Dotfiles (Aether)</string>
+	<string>Dotfiles (Tokyo Night)</string>
 	<key>settings</key>
 	<array>
 		<dict>
 			<key>settings</key>
 			<dict>
 				<key>background</key>
-				<string>#040208</string>
+				<string>#1a1b26</string>
 				<key>foreground</key>
-				<string>#e8e6cf</string>
+				<string>#a9b1d6</string>
 				<key>caret</key>
-				<string>#eeecdb</string>
+				<string>#c0caf5</string>
 				<key>selection</key>
-				<string>#1d1b21</string>
+				<string>#292e42</string>
 				<key>invisibles</key>
-				<string>#636167</string>
+				<string>#414868</string>
 				<key>lineHighlight</key>
-				<string>#030206</string>
+				<string>#13141c</string>
 			</dict>
 		</dict>
 		<dict>
@@ -31,7 +31,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#aead9b</string>
+				<string>#565f89</string>
 			</dict>
 		</dict>
 		<dict>
@@ -42,7 +42,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#8ca12c</string>
+				<string>#9ece6a</string>
 			</dict>
 		</dict>
 		<dict>
@@ -53,7 +53,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#ce7179</string>
+				<string>#eb927b</string>
 			</dict>
 		</dict>
 		<dict>
@@ -64,7 +64,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#b369b7</string>
+				<string>#ad8ee6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -75,7 +75,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#6076fb</string>
+				<string>#7aa2f7</string>
 			</dict>
 		</dict>
 		<dict>
@@ -86,7 +86,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#9bac38</string>
+				<string>#e0af68</string>
 			</dict>
 		</dict>
 		<dict>
@@ -97,7 +97,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#e8e6cf</string>
+				<string>#a9b1d6</string>
 			</dict>
 		</dict>
 		<dict>
@@ -108,7 +108,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#c55861</string>
+				<string>#f7768e</string>
 			</dict>
 		</dict>
 		<dict>
@@ -119,7 +119,7 @@
 			<key>settings</key>
 			<dict>
 				<key>foreground</key>
-				<string>#8292f4</string>
+				<string>#449dab</string>
 			</dict>
 		</dict>
 	</array>
