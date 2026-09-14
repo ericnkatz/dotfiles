@@ -96,9 +96,22 @@ $(comm -23 \
     <(brew bundle list --file="$DOTFILES_DIR/Brewfile" --casks 2>/dev/null | sed 's#.*/##' | sort) \
     <(brew list --cask -1 2>/dev/null | sort))"
   fi
-  brew bundle install --file="$DOTFILES_DIR/Brewfile" --quiet >/dev/null
+  # || true: some casks (e.g. tailscale-app) install via a .pkg that needs
+  # sudo in a real terminal; in a non-interactive context they'll fail but
+  # the rest of install.sh should still run.
+  brew bundle install --file="$DOTFILES_DIR/Brewfile" --quiet >/dev/null || true
+  # brew bundle check --verbose lists anything still missing after install
+  # (e.g. a cask whose .pkg installer needs manual sudo/approval), so a
+  # failed cask is reported as skipped rather than falsely claimed installed.
+  still_missing="$(brew bundle check --file="$DOTFILES_DIR/Brewfile" --verbose 2>&1 \
+    | sed -En 's/^→ (Formula|Cask) ([^ ]*) needs.*/\2/p' | sed 's#.*/##')"
   while IFS= read -r pkg; do
-    [ -n "$pkg" ] && installed "$pkg"
+    [ -z "$pkg" ] && continue
+    if grep -qxF "$pkg" <<< "$still_missing"; then
+      skipped "$pkg" "brew bundle install failed; run 'brew bundle install' manually"
+    else
+      installed "$pkg"
+    fi
   done <<< "$new_pkgs"
 fi
 
