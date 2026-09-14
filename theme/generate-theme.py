@@ -444,6 +444,48 @@ def register_extension(app_name: str) -> None:
     registry_path.write_text(json.dumps(entries))
 
 
+def strip_jsonc(text: str) -> str:
+    """Strip // and /* */ comments and trailing commas from JSONC text.
+
+    VS Code's settings.json is JSONC, not strict JSON - real user settings
+    commonly contain comments and trailing commas that json.loads rejects.
+    """
+    out = []
+    i, n = 0, len(text)
+    in_string = False
+    while i < n:
+        c = text[i]
+        if in_string:
+            out.append(c)
+            if c == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if c == '"':
+                in_string = False
+            i += 1
+            continue
+        if c == '"':
+            in_string = True
+            out.append(c)
+            i += 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "*":
+            i += 2
+            while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
+                i += 1
+            i += 2
+            continue
+        out.append(c)
+        i += 1
+    stripped = "".join(out)
+    return re.sub(r",(\s*[}\]])", r"\1", stripped)
+
+
 def set_editor_theme(app_name: str, cli_name: str) -> bool:
     """Returns True if this editor's settings.json was updated."""
     # Gate on the CLI shim (installed by Homebrew/the app itself), not on
@@ -459,7 +501,7 @@ def set_editor_theme(app_name: str, cli_name: str) -> bool:
     settings = {}
     if settings_path.exists():
         try:
-            settings = json.loads(settings_path.read_text())
+            settings = json.loads(strip_jsonc(settings_path.read_text()))
         except json.JSONDecodeError:
             print(f"Skipping {settings_path}: not valid JSON", file=sys.stderr)
             return False
