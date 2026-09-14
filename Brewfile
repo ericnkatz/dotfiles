@@ -27,5 +27,5 @@ if OS.mac?
   cask "1password"
   cask "1password-cli"
   # VPN mesh networking (installs the app + tailscale/tailscaled CLI)
-  cask "tailscale"
+  cask "tailscale-app"
 end
