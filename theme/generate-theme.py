@@ -568,13 +568,16 @@ def main() -> None:
         if set_editor_theme("Cursor", "cursor"):
             editors.append("Cursor")
 
-        raycast_dir = DOTFILES / "theme" / "raycast"
-        raycast_dir.mkdir(parents=True, exist_ok=True)
-        raycast_theme = gen_raycast(colors, theme_name)
-        raycast_path = raycast_dir / f"{theme_name}.json"
-        raycast_path.write_text(json.dumps(raycast_theme, indent=2) + "\n")
-        import_url = raycast_import_url(raycast_theme)
-        (raycast_dir / f"{theme_name}.url.txt").write_text(import_url + "\n")
+        # Raycast has no CLI shim to gate on (unlike code/cursor), so check
+        # for the .app bundle directly.
+        if Path("/Applications/Raycast.app").exists():
+            raycast_dir = DOTFILES / "theme" / "raycast"
+            raycast_dir.mkdir(parents=True, exist_ok=True)
+            raycast_theme = gen_raycast(colors, theme_name)
+            raycast_path = raycast_dir / f"{theme_name}.json"
+            raycast_path.write_text(json.dumps(raycast_theme, indent=2) + "\n")
+            import_url = raycast_import_url(raycast_theme)
+            (raycast_dir / f"{theme_name}.url.txt").write_text(import_url + "\n")
 
     (DOTFILES / "theme" / "current").write_text(theme_name + "\n")
 
