@@ -12,6 +12,7 @@ Each generated file has a marked block:
 Only that block is replaced; everything else in the file is left alone.
 """
 import argparse
+import getpass
 import json
 import re
 import shutil
@@ -53,9 +54,9 @@ def gradient(light_hex: str, dark_hex: str, steps: int) -> list[str]:
     return [rgb_to_hex(lerp(a, b, i / (steps - 1))) for i in range(steps)]
 
 
-def replace_block(text: str, comment_prefix: str, new_body: str) -> str:
-    begin_line = f"{comment_prefix} {BEGIN}"
-    end_line = f"{comment_prefix} {END}"
+def replace_block(text: str, comment_prefix: str, new_body: str, begin: str = BEGIN, end: str = END) -> str:
+    begin_line = f"{comment_prefix} {begin}"
+    end_line = f"{comment_prefix} {end}"
     pattern = re.compile(
         re.escape(begin_line) + r".*?" + re.escape(end_line), re.DOTALL
     )
@@ -515,10 +516,22 @@ def set_editor_theme(app_name: str, cli_name: str) -> bool:
     return True
 
 
-def apply(path: Path, comment_prefix: str, body: str) -> None:
+def apply(path: Path, comment_prefix: str, body: str, begin: str = BEGIN, end: str = END) -> None:
     text = path.read_text() if path.exists() else ""
-    new_text = replace_block(text, comment_prefix, body)
+    new_text = replace_block(text, comment_prefix, body, begin, end)
     path.write_text(new_text)
+
+
+USERNAME_BEGIN = "BEGIN GENERATED USERNAME (do not edit; run theme/generate-theme.py)"
+USERNAME_END = "END GENERATED USERNAME"
+
+
+def gen_username_format() -> str:
+    # "katz" is Eric's own machines' hardcoded display name; on any other
+    # account, fall back to Starship's real $user variable.
+    user = getpass.getuser()
+    name = "katz" if "katz" in user.lower() else "$user"
+    return f"format = '[ {name}]($style)'\n"
 
 
 def main() -> None:
@@ -543,7 +556,9 @@ def main() -> None:
         if args.starship_palette else derived
     )
 
-    apply(DOTFILES / "config" / "starship.toml", "#", gen_starship(colors, starship_colors))
+    starship_path = DOTFILES / "config" / "starship.toml"
+    apply(starship_path, "#", gen_starship(colors, starship_colors))
+    apply(starship_path, "#", gen_username_format(), USERNAME_BEGIN, USERNAME_END)
     if not args.aether_managed:
         apply(DOTFILES / "config" / "ghostty" / "config", "#", gen_ghostty(colors))
 

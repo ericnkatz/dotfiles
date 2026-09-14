@@ -61,7 +61,9 @@ RedHatEnterprise = "󱄛"
 show_always = true
 style_user = "bg:red fg:crust"
 style_root = "bg:red fg:crust"
+# BEGIN GENERATED USERNAME (do not edit; run theme/generate-theme.py)
 format = '[ katz]($style)'
+# END GENERATED USERNAME
 
 [directory]
 style = "bg:peach fg:crust"
