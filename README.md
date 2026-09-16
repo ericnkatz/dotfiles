@@ -87,6 +87,8 @@ Night powerline colors.
 
 Claude's existing status-line appearance is intentionally left untouched.
 
+![Starship prompt across several generated themes](docs/terminal-themes.png)
+
 When installed, Codex gets a matching native status-line layout and selects the
 generated theme in its `[tui]` configuration. Codex supplies its own status-line
 fields and separators, so it cannot reproduce a powerline layout exactly.
