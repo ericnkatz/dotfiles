@@ -16,8 +16,12 @@ else
 fi
 TAG="${DIM}dotfiles${RESET}"
 
+# Guard against Ctrl-C leaving the cursor hidden mid-spin.
+trap 'tput cnorm 2>/dev/null' EXIT
+
 THEME=""
 THEME_WAS_PASSED=false
+EMULATE=false
 for arg in "$@"; do
   case "$arg" in
     --theme=*) THEME="${arg#--theme=}"; THEME_WAS_PASSED=true ;;
@@ -25,6 +29,9 @@ for arg in "$@"; do
       echo "Usage: --theme=<name> (e.g. --theme=everforest). See theme/palettes/ for options." >&2
       exit 1
       ;;
+    # Preview the spinner/status UX of a from-scratch macOS install with
+    # simulated wait times, making no real changes to this machine.
+    --emulate) EMULATE=true ;;
   esac
 done
 
@@ -34,6 +41,35 @@ SKIPPED=()     # things that needed manual action (no installer available)
 installed() { INSTALLED+=("$1"); echo "$TAG ${YELLOW}installed${RESET} $1"; }
 skipped()   { SKIPPED+=("$1: $2"); echo "$TAG ${RED}skipped${RESET}  $1 - $2"; }
 
+# Waits on a backgrounded PID, animating a spinner and rotating through the
+# given status messages every ~3s so long, silent installs (brew bundle,
+# mise install) don't look hung. Skipped entirely when not attached to a
+# terminal, since \r-driven redraws are meaningless in a log file.
+spin() {
+  local pid=$1; shift
+  local messages=("$@")
+  if [ ! -t 1 ]; then
+    wait "$pid"
+    return
+  fi
+  local frames=(⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏)
+  local i=0 msg_i=0 msg_ticks=0
+  tput civis 2>/dev/null
+  while kill -0 "$pid" 2>/dev/null; do
+    printf "\r%s ${CYAN}%s${RESET} %s" "$TAG" "${frames[$((i % ${#frames[@]}))]}" "${messages[$msg_i]}"
+    sleep 0.1
+    i=$((i + 1))
+    msg_ticks=$((msg_ticks + 1))
+    if [ "$msg_ticks" -ge 30 ] && [ "$((msg_i + 1))" -lt "${#messages[@]}" ]; then
+      msg_i=$((msg_i + 1))
+      msg_ticks=0
+    fi
+  done
+  printf "\r\033[K"
+  tput cnorm 2>/dev/null
+  wait "$pid"
+}
+
 link() {
   local src="$1" dest="$2"
   mkdir -p "$(dirname "$dest")"
@@ -42,6 +78,55 @@ link() {
   fi
   ln -sfn "$src" "$dest"
 }
+
+# Walks through the same spinner/status output a real fresh macOS install
+# would produce, but with synthetic sleeps standing in for every network
+# call or installer (brew, mise, npx). Reads package names out of the real
+# Brewfile so the summary is accurate, but never shells out to brew, mise,
+# curl, or touches anything under $HOME - a pure UX preview.
+emulate_install() {
+  echo "$TAG ${BOLD}setting up${RESET} $(basename "$DOTFILES_DIR") ${DIM}(emulated fresh install, no changes made)${RESET}"
+
+  sleep 10 &
+  spin $! "installing Homebrew" "still installing Homebrew (this can take a minute)..."
+  installed "Homebrew"
+
+  sleep 6 &
+  spin $! "installing mise"
+  installed "mise"
+
+  local formulae casks pkg
+  formulae="$(grep -oE '^\s*brew "[^"]+"' "$DOTFILES_DIR/Brewfile" | sed -E 's/.*"([^"]+)".*/\1/' | sed 's#.*/##')"
+  casks="$(grep -oE '^\s*cask "[^"]+"' "$DOTFILES_DIR/Brewfile" | sed -E 's/.*"([^"]+)".*/\1/')"
+
+  sleep 20 &
+  spin $! "installing packages from Brewfile" \
+    "still installing packages (some casks are large downloads)..." \
+    "almost there, finishing up package installs..."
+  while IFS= read -r pkg; do
+    [ -z "$pkg" ] && continue
+    installed "$pkg"
+  done <<< "$formulae
+$casks"
+
+  sleep 8 &
+  spin $! "installing tool versions via mise"
+
+  sleep 5 &
+  spin $! "installing agent skills"
+  installed "agent skills (addyosmani/agent-skills)"
+
+  echo "$TAG ${CYAN}theme${RESET}   applying theme ${BOLD}pastel-green${RESET} and linking configs ${DIM}(emulated)${RESET}"
+
+  echo ""
+  echo "$TAG ${GREEN}✓${RESET} installed: ${BOLD}${INSTALLED[*]}${RESET}"
+  echo "$TAG ${GREEN}done${RESET} ${DIM}(emulated - re-run without --emulate for a real install)${RESET}"
+}
+
+if [ "$EMULATE" = true ]; then
+  emulate_install
+  exit 0
+fi
 
 echo "$TAG ${BOLD}setting up${RESET} $(basename "$DOTFILES_DIR")"
 
@@ -58,7 +143,8 @@ fi
 # package manager for macOS and the fallback for other supported Linux hosts.
 if [ "$IS_OMARCHY" = false ]; then
   if ! command -v brew &>/dev/null; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" &
+    spin $! "installing Homebrew" "still installing Homebrew (this can take a minute)..."
     if [ -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
       eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     fi
@@ -67,7 +153,8 @@ if [ "$IS_OMARCHY" = false ]; then
 fi
 
 if ! command -v mise &>/dev/null; then
-  curl -fsSL https://mise.run | sh >/dev/null
+  (curl -fsSL https://mise.run | sh >/dev/null) &
+  spin $! "installing mise"
   export PATH="$HOME/.local/bin:$PATH"
   installed "mise"
 fi
@@ -99,7 +186,10 @@ $(comm -23 \
   # || true: some casks (e.g. tailscale-app) install via a .pkg that needs
   # sudo in a real terminal; in a non-interactive context they'll fail but
   # the rest of install.sh should still run.
-  brew bundle install --file="$DOTFILES_DIR/Brewfile" --quiet >/dev/null || true
+  (brew bundle install --file="$DOTFILES_DIR/Brewfile" --quiet >/dev/null || true) &
+  spin $! "installing packages from Brewfile" \
+    "still installing packages (some casks are large downloads)..." \
+    "almost there, finishing up package installs..."
   # brew bundle check --verbose lists anything still missing after install
   # (e.g. a cask whose .pkg installer needs manual sudo/approval), so a
   # failed cask is reported as skipped rather than falsely claimed installed.
@@ -186,6 +276,33 @@ if [ "$OS" = "Linux" ]; then
       installed "1password-cli"
     else
       skipped "1password-cli" "no AUR helper found; see https://1password.com/downloads/linux"
+    fi
+  fi
+
+  # Figma has no official Linux app; figma-linux is a community client
+  # available only via the AUR.
+  if ! command -v figma-linux &>/dev/null; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg aur add figma-linux
+      installed "figma-linux"
+    elif [ -n "$aur_helper" ]; then
+      "$aur_helper" -S --needed --noconfirm figma-linux >/dev/null
+      installed "figma-linux"
+    else
+      skipped "figma-linux" "no AUR helper found; see https://github.com/Figma-Linux/figma-linux"
+    fi
+  fi
+
+  # Not in the official Arch repos - only available via the AUR.
+  if ! command -v gcloud &>/dev/null; then
+    if [ "$IS_OMARCHY" = true ]; then
+      omarchy pkg aur add google-cloud-cli
+      installed "google-cloud-cli"
+    elif [ -n "$aur_helper" ]; then
+      "$aur_helper" -S --needed --noconfirm google-cloud-cli >/dev/null
+      installed "google-cloud-cli"
+    else
+      skipped "google-cloud-cli" "no AUR helper found; see https://cloud.google.com/sdk/docs/install"
     fi
   fi
 
@@ -293,13 +410,15 @@ if command -v mise &>/dev/null; then
   fi
   mkdir -p "$node_config_dir"
   printf '[tools]\nnode = "%s"\n' "$node_choice" > "$node_config"
-  mise install
+  mise install &
+  spin $! "installing tool versions via mise"
 fi
 
 agent_skills_dir="$HOME/.agents/skills"
 if [ ! -d "$agent_skills_dir" ] || [ -z "$(ls -A "$agent_skills_dir" 2>/dev/null)" ]; then
   if command -v mise &>/dev/null; then
-    mise exec -- npx --yes skills add addyosmani/agent-skills -g -a '*' -y >/dev/null 2>&1 || true
+    (mise exec -- npx --yes skills add addyosmani/agent-skills -g -a '*' -y >/dev/null 2>&1 || true) &
+    spin $! "installing agent skills"
     installed "agent skills (addyosmani/agent-skills)"
   fi
 fi
