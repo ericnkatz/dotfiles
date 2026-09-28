@@ -26,6 +26,10 @@ if OS.mac?
   # Password manager + its CLI (op)
   cask "1password"
   cask "1password-cli"
+  # Design tool
+  cask "figma"
+  # Google Cloud CLI (gcloud, gsutil, bq)
+  cask "gcloud-cli"
   # VPN mesh networking (installs the app + tailscale/tailscaled CLI).
   # Skipped if already present (e.g. installed outside Homebrew). Checking
   # known install paths directly rather than `command -v`/PATH, since

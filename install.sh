@@ -22,6 +22,8 @@ trap 'tput cnorm 2>/dev/null' EXIT
 THEME=""
 THEME_WAS_PASSED=false
 EMULATE=false
+PICK_THEME=false
+GRADSTOP=false
 for arg in "$@"; do
   case "$arg" in
     --theme=*) THEME="${arg#--theme=}"; THEME_WAS_PASSED=true ;;
@@ -29,11 +31,70 @@ for arg in "$@"; do
       echo "Usage: --theme=<name> (e.g. --theme=everforest). See theme/palettes/ for options." >&2
       exit 1
       ;;
+    --themes) PICK_THEME=true ;;
+    # Approximate powerline colors with a light_foreground->muted gradient
+    # instead of the palette's own named colors (which --themes' swatch
+    # previews and generate-theme.py uses by default).
+    --gradstop) GRADSTOP=true ;;
     # Preview the spinner/status UX of a from-scratch macOS install with
     # simulated wait times, making no real changes to this machine.
     --emulate) EMULATE=true ;;
   esac
 done
+
+# Renders a palette's key colors as background-color blocks (not the real
+# powerline glyphs) so --themes works without the Nerd Font installed.
+theme_swatch() {
+  local file="$1" key hex r g b out=""
+  for key in red orange yellow green cyan blue magenta; do
+    hex="$(grep -E "^${key}[[:space:]]*=" "$file" | head -1 \
+      | sed -E 's/^[^=]+=[[:space:]]*"?(#[0-9a-fA-F]{6})"?.*/\1/')"
+    [ -z "$hex" ] && continue
+    hex="${hex#\#}"
+    r=$((16#${hex:0:2})); g=$((16#${hex:2:2})); b=$((16#${hex:4:2}))
+    out+="$(printf '\033[48;2;%d;%d;%dm  \033[0m' "$r" "$g" "$b")"
+  done
+  printf '%s' "$out"
+}
+
+# Lists every theme/palettes/*.toml with a swatch, prompts for a pick over
+# /dev/tty (so this also works when install.sh is run via `curl | bash`),
+# and sets THEME/THEME_WAS_PASSED so the rest of the script proceeds exactly
+# as if --theme=<name> had been passed.
+pick_theme_interactively() {
+  if [ ! -r /dev/tty ]; then
+    echo "$TAG ${RED}error${RESET}  --themes needs an interactive terminal (no /dev/tty available)" >&2
+    exit 1
+  fi
+
+  local names=() f
+  for f in "$DOTFILES_DIR"/theme/palettes/*.toml; do
+    names+=("$(basename "$f" .toml)")
+  done
+
+  echo "$TAG Available themes:"
+  local i=1 name
+  for name in "${names[@]}"; do
+    printf "  %2d) %-20s %s\n" "$i" "$name" "$(theme_swatch "$DOTFILES_DIR/theme/palettes/$name.toml")"
+    i=$((i + 1))
+  done
+
+  local choice
+  printf "%s Select a theme [1-%d]: " "$TAG" "${#names[@]}"
+  read -r choice < /dev/tty
+  if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "${#names[@]}" ]; then
+    echo "$TAG ${RED}error${RESET}  invalid selection '$choice'" >&2
+    exit 1
+  fi
+
+  THEME="${names[$((choice - 1))]}"
+  THEME_WAS_PASSED=true
+  echo "$TAG selected ${BOLD}$THEME${RESET}"
+}
+
+if [ "$PICK_THEME" = true ]; then
+  pick_theme_interactively
+fi
 
 INSTALLED=()   # things that needed installing this run
 SKIPPED=()     # things that needed manual action (no installer available)
@@ -354,6 +415,9 @@ if [ -z "${palette_path:-}" ] && [ ! -f "$DOTFILES_DIR/theme/palettes/$THEME.tom
   exit 1
 fi
 
+GRADSTOP_FLAG=()
+[ "$GRADSTOP" = true ] && GRADSTOP_FLAG=(--gradstop)
+
 if [ "$AETHER_MANAGED" = true ]; then
   if [ "$THEME_WAS_PASSED" = true ]; then
     # Aether applies this once to Omarchy and every application it supports.
@@ -362,9 +426,9 @@ if [ "$AETHER_MANAGED" = true ]; then
   fi
   theme_out="$(python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME" \
     --palette "$palette_path" --starship-palette "$DOTFILES_DIR/theme/palettes/tokyo-night.toml" \
-    --aether-managed)"
+    --aether-managed "${GRADSTOP_FLAG[@]+"${GRADSTOP_FLAG[@]}"}")"
 else
-  theme_out="$(python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME")"
+  theme_out="$(python3 "$DOTFILES_DIR/theme/generate-theme.py" "$THEME" "${GRADSTOP_FLAG[@]+"${GRADSTOP_FLAG[@]}"}")"
 fi
 echo "$theme_out" | sed "s/^/$TAG ${CYAN}theme${RESET}   /"
 
