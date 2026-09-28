@@ -462,7 +462,7 @@ if command -v mise &>/dev/null; then
   if command -v node &>/dev/null; then
     current_node="$(node -p 'process.versions.node' 2>/dev/null || true)"
   fi
-  node_lts="$(mise latest node@lts)"
+  node_lts="$(MISE_AUTO_UPDATE=false mise latest node@lts)"
   node_choice="$node_lts"
   if [ -n "$current_node" ] && [ "$(printf '%s\n%s\n' "$node_lts" "$current_node" | sort -V | tail -n1)" = "$current_node" ]; then
     node_path="$(readlink -f "$(command -v node)")"
@@ -474,14 +474,14 @@ if command -v mise &>/dev/null; then
   fi
   mkdir -p "$node_config_dir"
   printf '[tools]\nnode = "%s"\n' "$node_choice" > "$node_config"
-  mise install &
+  MISE_AUTO_UPDATE=false mise install &
   spin $! "installing tool versions via mise"
 fi
 
 agent_skills_dir="$HOME/.agents/skills"
 if [ ! -d "$agent_skills_dir" ] || [ -z "$(ls -A "$agent_skills_dir" 2>/dev/null)" ]; then
   if command -v mise &>/dev/null; then
-    (mise exec -- npx --yes skills add addyosmani/agent-skills -g -a '*' -y >/dev/null 2>&1 || true) &
+    (MISE_AUTO_UPDATE=false mise exec -- npx --yes skills add addyosmani/agent-skills -g -a '*' -y >/dev/null 2>&1 || true) &
     spin $! "installing agent skills"
     installed "agent skills (addyosmani/agent-skills)"
   fi
