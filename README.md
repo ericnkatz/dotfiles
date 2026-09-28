@@ -36,6 +36,14 @@ generated theme on other systems.
 ./install.sh --theme=everforest
 ```
 
+Not sure which one you want? `--themes` lists every palette with a color
+swatch and prompts you to pick one interactively, then continues the install
+with that choice:
+
+```sh
+./install.sh --themes
+```
+
 ### Cross-platform notes
 
 - `Brewfile` casks (Ghostty app, Nerd Font, 1Password) only work on macOS,

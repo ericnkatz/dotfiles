@@ -69,18 +69,33 @@ def replace_block(text: str, comment_prefix: str, new_body: str, begin: str = BE
 STARSHIP_KEYS = ["red", "peach", "yellow", "green", "sapphire", "lavender", "crust"]
 
 
-def build_derived(colors: dict) -> dict:
+def build_derived(colors: dict, use_gradient: bool = False) -> dict:
     # A palette can specify the six powerline stops directly (as pastel-green
-    # does) to be reproduced exactly rather than approximated by a gradient.
+    # does) to be reproduced exactly rather than approximated.
     if all(k in colors for k in STARSHIP_KEYS):
         return {k: colors[k] for k in STARSHIP_KEYS}
 
-    light = colors.get("light_foreground") or colors.get("foreground")
-    dark = colors.get("muted") or colors.get("accent")
-    stops = gradient(light, dark, 6)
-    names = ["red", "peach", "yellow", "green", "sapphire", "lavender"]
-    derived = dict(zip(names, stops))
-    derived["crust"] = colors.get("background", "#000000")
+    if use_gradient:
+        light = colors.get("light_foreground") or colors.get("foreground")
+        dark = colors.get("muted") or colors.get("accent")
+        stops = gradient(light, dark, 6)
+        names = ["red", "peach", "yellow", "green", "sapphire", "lavender"]
+        derived = dict(zip(names, stops))
+        derived["crust"] = colors.get("background", "#000000")
+        return derived
+
+    # Default: pick the palette's own named colors directly, in the same
+    # order --themes' swatch renders them, so the powerline colors match
+    # what was previewed rather than an interpolated approximation.
+    derived = {
+        "red": pick(colors, "red"),
+        "peach": pick(colors, "orange", "yellow"),
+        "yellow": pick(colors, "yellow"),
+        "green": pick(colors, "green"),
+        "sapphire": pick(colors, "cyan"),
+        "lavender": pick(colors, "blue"),
+        "crust": colors.get("background", "#000000"),
+    }
     return derived
 
 
@@ -540,6 +555,11 @@ def main() -> None:
     parser.add_argument("--palette", type=Path)
     parser.add_argument("--starship-palette", type=Path)
     parser.add_argument("--aether-managed", action="store_true")
+    parser.add_argument(
+        "--gradstop", action="store_true",
+        help="Approximate powerline colors with a light_foreground->muted "
+             "gradient instead of the palette's own named colors.",
+    )
     args = parser.parse_args()
 
     theme_name = args.theme
@@ -550,15 +570,18 @@ def main() -> None:
         sys.exit(1)
 
     colors = parse_palette(palette_path)
-    derived = build_derived(colors)
+    derived = build_derived(colors, use_gradient=args.gradstop)
     starship_colors = (
-        build_derived(parse_palette(args.starship_palette))
+        build_derived(parse_palette(args.starship_palette), use_gradient=args.gradstop)
         if args.starship_palette else derived
     )
 
     starship_path = DOTFILES / "config" / "starship.toml"
     apply(starship_path, "#", gen_starship(colors, starship_colors))
     apply(starship_path, "#", gen_username_format(), USERNAME_BEGIN, USERNAME_END)
+
+    statusline_path = DOTFILES / "config" / "claude" / "statusline.sh"
+    apply(statusline_path, "#", gen_statusline(starship_colors))
     if not args.aether_managed:
         apply(DOTFILES / "config" / "ghostty" / "config", "#", gen_ghostty(colors))
 
